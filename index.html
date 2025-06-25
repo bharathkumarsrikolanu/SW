@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wheel of Life Spinner</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: url("background.jpg.jpg") no-repeat center center fixed;
+      background-size: cover;
+      color: #fff;
+      text-align: center;
+    }
+    h1 {
+      margin-top: 20px;
+      color: #fff;
+      text-shadow: 1px 1px 3px #000;
+    }
+    canvas#wheelCanvas {
+      max-width: 500px;
+      margin: 30px auto;
+      display: block;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+    }
+    button {
+      padding: 10px 20px;
+      background-color: #27ae60;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-bottom: 20px;
+      font-size: 16px;
+    }
+    .slider-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 20px auto;
+      max-width: 400px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 10px;
+      border-radius: 10px;
+    }
+    .slider-row label {
+      width: 150px;
+    }
+    .slider-row input[type="range"] {
+      flex: 1;
+      margin: 0 10px;
+    }
+    .value-display {
+      width: 30px;
+    }
+    #wheelChart {
+      max-width: 400px;
+      margin: 40px auto 0;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+    }
+    @media (max-width: 600px) {
+      canvas#wheelCanvas, #wheelChart {
+        max-width: 300px;
+        width: 100%;
+      }
+      .slider-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .slider-row label {
+        width: 100%;
+        margin-bottom: 5px;
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<h1>🎡 Wheel of Life Spinner</h1>
+<canvas id="wheelCanvas" width="500" height="500"></canvas>
+<button id="spinButton" onclick="spinWheel()">Spin the Wheel</button>
+<div id="ratingArea"></div>
+<canvas id="wheelChart"></canvas>
+
+<script>
+const keys = [
+  { name: "Health", color: "#e74c3c", icon: "🧘" },
+  { name: "Career", color: "#f39c12", icon: "💼" },
+  { name: "Finance", color: "#f1c40f", icon: "💰" },
+  { name: "Relationships", color: "#2ecc71", icon: "❤️" },
+  { name: "Personal Growth", color: "#1abc9c", icon: "📚" },
+  { name: "Fun & Recreation", color: "#3498db", icon: "🎉" },
+  { name: "Spirituality", color: "#9b59b6", icon: "🔮" },
+  { name: "Contribution", color: "#34495e", icon: "🤝" }
+];
+
+let remainingKeys = [...keys];
+let ratings = {};
+let spinning = false;
+let chart;
+let totalRotation = 0;
+let selectedKey = null;
+
+const canvas = document.getElementById("wheelCanvas");
+const ctx = canvas.getContext("2d");
+
+function drawWheel() {
+  const radius = canvas.width / 2;
+  const angle = (2 * Math.PI) / remainingKeys.length;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  remainingKeys.forEach((key, i) => {
+    const start = i * angle;
+    const end = start + angle;
+
+    ctx.beginPath();
+    ctx.moveTo(radius, radius);
+    ctx.arc(radius, radius, radius, start, end);
+    ctx.fillStyle = key.color;
+    ctx.fill();
+    ctx.save();
+
+    ctx.translate(radius, radius);
+    ctx.rotate(start + angle / 2);
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#fff";
+    ctx.font = "16px Arial";
+    ctx.fillText(`${key.icon} ${key.name}`, radius - 10, 5);
+    ctx.restore();
+  });
+
+  ctx.beginPath();
+  ctx.moveTo(radius - 10, 0);
+  ctx.lineTo(radius + 10, 0);
+  ctx.lineTo(radius, 20);
+  ctx.fillStyle = "#333";
+  ctx.fill();
+}
+
+function spinWheel() {
+  if (spinning || remainingKeys.length === 0) return;
+  spinning = true;
+  document.getElementById("spinButton").disabled = true;
+
+  const anglePerKey = 360 / remainingKeys.length;
+  const selectedIndex = Math.floor(Math.random() * remainingKeys.length);
+  const rotationDegrees = 360 * 5 + selectedIndex * anglePerKey + anglePerKey / 2;
+
+  totalRotation += rotationDegrees;
+  canvas.style.transition = "transform 4s ease-out";
+  canvas.style.transform = `rotate(${totalRotation}deg)`;
+
+  setTimeout(() => {
+    canvas.style.transition = "none";
+    canvas.style.transform = `rotate(${totalRotation % 360}deg)`;
+    selectedKey = remainingKeys[selectedIndex];
+    handleSelectedKey(selectedKey);
+    spinning = false;
+  }, 4200);
+}
+
+function handleSelectedKey(key) {
+  const ratingDiv = document.getElementById("ratingArea");
+  ratingDiv.innerHTML = `
+    <div class="slider-row">
+      <label>${key.icon} ${key.name}</label>
+      <input type="range" min="0" max="10" value="0" oninput="document.getElementById('ratingValue').innerText = this.value" id="ratingInput">
+      <span class="value-display" id="ratingValue">0</span>
+    </div>
+    <button onclick="submitRating('${key.name}')">Submit Rating</button>
+  `;
+}
+
+function submitRating(keyName) {
+  const value = document.getElementById("ratingInput").value;
+  ratings[keyName] = parseInt(value);
+
+  remainingKeys = remainingKeys.filter(k => k.name !== keyName);
+  document.getElementById("ratingArea").innerHTML = "";
+
+  if (Object.keys(ratings).length === keys.length) {
+    showResultChart();
+  } else {
+    document.getElementById("spinButton").disabled = false;
+  }
+}
+
+function showResultChart() {
+  const ctx = document.getElementById("wheelChart").getContext("2d");
+  const data = keys.map(k => ratings[k.name] || 0);
+  const labels = keys.map(k => k.name);
+  const backgroundColors = keys.map(k => k.color);
+
+  if (chart) chart.destroy();
+
+  chart = new Chart(ctx, {
+    type: 'pie',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: data,
+        backgroundColor: backgroundColors
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { display: false },
+        datalabels: {
+          color: '#fff',
+          formatter: (value, ctx) => {
+            const label = ctx.chart.data.labels[ctx.dataIndex];
+            return `${label}: ${value}`;
+          },
+          font: {
+            weight: 'bold',
+            size: 12
+          },
+          anchor: 'center',
+          align: 'center'
+        }
+      }
+    },
+    plugins: [ChartDataLabels]
+  });
+
+  const summary = document.createElement("div");
+  summary.style.maxWidth = "400px";
+  summary.style.margin = "20px auto";
+  summary.style.textAlign = "left";
+
+  summary.innerHTML = keys.map(k => {
+    const value = ratings[k.name] || 0;
+    return `
+      <div style="display:flex;align-items:center;margin:4px 0;">
+        <div style="width:16px;height:16px;background:${k.color};margin-right:8px;"></div>
+        <span><strong>${k.name}</strong>: ${value}</span>
+      </div>`;
+  }).join("");
+
+  document.getElementById("ratingArea").appendChild(summary);
+}
+
+drawWheel();
+</script>
+
+</body>
+</html>
